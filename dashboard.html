@@ -52,7 +52,6 @@
 
     <div class="container dashboard">
 
-        <!-- 🔝 TOP -->
         <div class="top-bar">
             <div>
                 <h2>🚀 SkillSync AI</h2>
@@ -61,7 +60,6 @@
             <button id="logoutBtn">Logout</button>
         </div>
 
-        <!-- 📄 Resume Link -->
         <div class="card">
             <h3>Add Resume Link</h3>
             <input type="text" id="resumeLink" placeholder="Paste resume link">
@@ -69,7 +67,6 @@
             <p id="status"></p>
         </div>
 
-        <!-- 🤖 Analyzer -->
         <div class="card">
             <h3>Analyze Resume</h3>
 
@@ -81,18 +78,15 @@
                 <button id="downloadBtn">Download</button>
             </div>
 
-            <!-- Progress -->
             <div style="margin-top:10px; background:#ddd; border-radius:10px;">
                 <div id="progressBar" style="width:0%; height:20px; background:green; color:white; text-align:center;">
                     0%
                 </div>
             </div>
 
-            <!-- Result -->
             <div id="result" style="margin-top:10px;"></div>
         </div>
 
-        <!-- 📊 HISTORY -->
         <div class="card">
             <h3>📊 Previous Analysis</h3>
             <div id="historyList">Loading...</div>
@@ -116,6 +110,8 @@
             getDocs
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+
+        // ✅ YOUR ORIGINAL CONFIG (UNCHANGED)
         const firebaseConfig = {
             apiKey: "AIzaSyCsFHPPZi8XetwTKUuuRYmD6o_dNsaaT9I",
             authDomain: "skillsync-ai-8145b.firebaseapp.com",
@@ -125,12 +121,14 @@
             appId: "1:22952267788:web:73311ef68fc22be1561e29"
         };
 
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // ================= LOAD HISTORY =================
+
         async function loadHistory(user) {
+
             const historyDiv = document.getElementById("historyList");
 
             try {
@@ -153,7 +151,7 @@
 
                     html += `
                         <div style="background:#fff; padding:10px; margin-bottom:10px; border-radius:8px;">
-                            <strong>Score:</strong> ${data.score}% 
+                            <strong>Score:</strong> ${data.score}%
                         </div>
                     `;
                 });
@@ -166,7 +164,7 @@
             }
         }
 
-        // ================= AUTH =================
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 document.getElementById("userEmail").innerText = user.email;
@@ -176,13 +174,14 @@
             }
         });
 
-        // ================= LOGOUT =================
+
         document.getElementById("logoutBtn").addEventListener("click", () => {
             signOut(auth).then(() => window.location.href = "index.html");
         });
 
-        // ================= SAVE RESUME =================
+
         document.getElementById("saveBtn").addEventListener("click", async () => {
+
             const link = document.getElementById("resumeLink").value;
             const user = auth.currentUser;
 
@@ -196,23 +195,23 @@
             document.getElementById("status").innerText = "✅ Saved";
         });
 
-        // ================= ANALYZE =================
+
+        // ✅ FIXED API URL HERE
         document.getElementById("analyzeBtn").addEventListener("click", async () => {
 
             const text = document.getElementById("resumeText").value;
             if (!text) return alert("Paste resume text");
 
             const resultDiv = document.getElementById("result");
-            resultDiv.innerText = "⏳ Analyzing... Please wait (first request may take 30s)";
+            resultDiv.innerText = "⏳ Analyzing...";
 
             try {
-                const res = await fetch("https://skillsync-api-ci3a.onrender.com", {
+
+                const res = await fetch("https://skillsync-api-ci3a.onrender.com/analyze", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ text })
                 });
-
-                if (!res.ok) throw new Error("Server error");
 
                 const data = await res.json();
                 const aiText = data.output || "No response";
@@ -243,13 +242,54 @@
 
             } catch (err) {
                 console.error(err);
-                resultDiv.innerText = "❌ Failed to analyze. Try again.";
+                resultDiv.innerText = "❌ Failed to analyze";
             }
         });
 
-        // ================= PLACEHOLDERS =================
-        document.getElementById("improveBtn").onclick = () => alert("Coming soon 🚀");
-        document.getElementById("downloadBtn").onclick = () => alert("Coming soon 🚀");
+
+        // ✅ IMPROVE WORKING
+        document.getElementById("improveBtn").addEventListener("click", async () => {
+
+            const text = document.getElementById("resumeText").value;
+            if (!text) return alert("Paste resume text");
+
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerText = "⏳ Improving...";
+
+            try {
+
+                const res = await fetch("https://skillsync-api-ci3a.onrender.com/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await res.json();
+
+                resultDiv.innerText = "✨ Improved Resume:\n\n" + data.output;
+
+            } catch (err) {
+                console.error(err);
+                resultDiv.innerText = "❌ Failed to improve";
+            }
+        });
+
+
+        // ✅ DOWNLOAD WORKING
+        document.getElementById("downloadBtn").addEventListener("click", () => {
+
+            const content = document.getElementById("result").innerText;
+
+            if (!content) return alert("No result to download");
+
+            const blob = new Blob([content], { type: "text/plain" });
+
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "resume_analysis.txt";
+            a.click();
+
+        });
 
     </script>
 
