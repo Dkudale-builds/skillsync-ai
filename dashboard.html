@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SkillSync AI</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .dashboard {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-row button {
+            flex: 1;
+        }
+
+        #result {
+            white-space: pre-line;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container dashboard">
+
+        <!-- 🔝 TOP -->
+        <div class="top-bar">
+            <div>
+                <h2>🚀 SkillSync AI</h2>
+                <h4 id="userEmail"></h4>
+            </div>
+            <button id="logoutBtn">Logout</button>
+        </div>
+
+        <!-- 📄 Resume Link -->
+        <div class="card">
+            <h3>Add Resume Link</h3>
+            <input type="text" id="resumeLink" placeholder="Paste resume link">
+            <button id="saveBtn">Save Resume</button>
+            <p id="status"></p>
+        </div>
+
+        <!-- 🤖 Analyzer -->
+        <div class="card">
+            <h3>Analyze Resume</h3>
+
+            <textarea id="resumeText" placeholder="Paste your resume text"></textarea>
+
+            <div class="btn-row">
+                <button id="analyzeBtn">Analyze</button>
+                <button id="improveBtn">Improve</button>
+                <button id="downloadBtn">Download</button>
+            </div>
+
+            <!-- Progress -->
+            <div style="margin-top:10px; background:#ddd; border-radius:10px;">
+                <div id="progressBar" style="width:0%; height:20px; background:green; color:white; text-align:center;">
+                    0%
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div id="result" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- 📊 HISTORY -->
+        <div class="card">
+            <h3>📊 Previous Analysis</h3>
+            <div id="historyList">Loading...</div>
+        </div>
+
+    </div>
+
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            collection,
+            addDoc,
+            serverTimestamp,
+            query,
+            where,
+            getDocs
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCsFHPPZi8XetwTKUuuRYmD6o_dNsaaT9I",
+            authDomain: "skillsync-ai-8145b.firebaseapp.com",
+            projectId: "skillsync-ai-8145b",
+            storageBucket: "skillsync-ai-8145b.appspot.com",
+            messagingSenderId: "22952267788",
+            appId: "1:22952267788:web:73311ef68fc22be1561e29"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ================= LOAD HISTORY =================
+        async function loadHistory(user) {
+            const historyDiv = document.getElementById("historyList");
+
+            try {
+                const q = query(
+                    collection(db, "analysis"),
+                    where("uid", "==", user.uid)
+                );
+
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    historyDiv.innerHTML = "No history found";
+                    return;
+                }
+
+                let html = "";
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+
+                    html += `
+                        <div style="background:#fff; padding:10px; margin-bottom:10px; border-radius:8px;">
+                            <strong>Score:</strong> ${data.score}% 
+                        </div>
+                    `;
+                });
+
+                historyDiv.innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                historyDiv.innerText = "Error loading history";
+            }
+        }
+
+        // ================= AUTH =================
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById("userEmail").innerText = user.email;
+                loadHistory(user);
+            } else {
+                window.location.href = "index.html";
+            }
+        });
+
+        // ================= LOGOUT =================
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+            signOut(auth).then(() => window.location.href = "index.html");
+        });
+
+        // ================= SAVE RESUME =================
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const link = document.getElementById("resumeLink").value;
+            const user = auth.currentUser;
+
+            if (!link) return alert("Enter resume link");
+
+            await setDoc(doc(db, "users", user.uid), {
+                email: user.email,
+                resumeLink: link
+            });
+
+            document.getElementById("status").innerText = "✅ Saved";
+        });
+
+        // ================= ANALYZE =================
+        document.getElementById("analyzeBtn").addEventListener("click", async () => {
+
+            const text = document.getElementById("resumeText").value;
+            if (!text) return alert("Paste resume text");
+
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerText = "⏳ Analyzing... Please wait (first request may take 30s)";
+
+            try {
+                const res = await fetch("https://skillsync-api-ci3a.onrender.com/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text })
+                });
+
+                if (!res.ok) throw new Error("Server error");
+
+                const data = await res.json();
+                const aiText = data.output || "No response";
+
+                resultDiv.innerText = aiText;
+
+                const match = aiText.match(/(\d+)\s*\/\s*100/);
+                const score = match ? Number(match[1]) : 0;
+
+                const bar = document.getElementById("progressBar");
+                bar.style.width = score + "%";
+                bar.innerText = score + "%";
+
+                const user = auth.currentUser;
+
+                if (user) {
+                    await addDoc(collection(db, "analysis"), {
+                        uid: user.uid,
+                        email: user.email,
+                        text,
+                        result: aiText,
+                        score,
+                        createdAt: serverTimestamp()
+                    });
+
+                    loadHistory(user);
+                }
+
+            } catch (err) {
+                console.error(err);
+                resultDiv.innerText = "❌ Failed to analyze. Try again.";
+            }
+        });
+
+        // ================= PLACEHOLDERS =================
+        document.getElementById("improveBtn").onclick = () => alert("Coming soon 🚀");
+        document.getElementById("downloadBtn").onclick = () => alert("Coming soon 🚀");
+
+    </script>
+
+</body>
+
+</html>
