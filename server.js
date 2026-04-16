@@ -16,6 +16,11 @@ app.get("/", (req, res) => {
     res.send("🚀 Server is running");
 });
 
+// ================= TEST ROUTE (FOR BROWSER) =================
+app.get("/analyze", (req, res) => {
+    res.send("✅ Analyze route is working (use POST for real request)");
+});
+
 // ================= GROQ SETUP =================
 if (!process.env.GROQ_API_KEY) {
     console.error("❌ GROQ_API_KEY missing (check Render env)");
@@ -30,6 +35,7 @@ app.post("/analyze", async (req, res) => {
     try {
         const { text } = req.body;
 
+        // ✅ Validation
         if (!text || text.trim() === "") {
             return res.status(400).json({
                 success: false,
@@ -39,6 +45,7 @@ app.post("/analyze", async (req, res) => {
 
         console.log("📥 Request received");
 
+        // 🔥 AI CALL
         const chat = await groq.chat.completions.create({
             model: "llama-3.1-8b-instant",
             messages: [

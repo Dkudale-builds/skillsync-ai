@@ -206,7 +206,7 @@
             resultDiv.innerText = "⏳ Analyzing... Please wait (first request may take 30s)";
 
             try {
-                const res = await fetch("https://skillsync-api-ci3a.onrender.com/analyze", {
+                const res = await fetch("https://skillsync-api-ci3a.onrender.com", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ text })
